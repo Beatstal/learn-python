@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Rock • Paper • Scissors (Python on Web)</title>
+  <style>
+    body{background:#000;color:#0f0;font-family:monospace;margin:0;padding:24px}
+    h1{margin:0 0 8px}
+    .sub{color:#6ef}
+    .btns{margin:16px 0}
+    button{background:#111;color:#0f0;border:2px solid #0f0;padding:10px 16px;margin-right:8px;cursor:pointer}
+    button:disabled{opacity:.6;cursor:not-allowed}
+    pre{white-space:pre-wrap;background:#0a0a0a;padding:16px;border-radius:8px;border:1px solid #033}
+    .status{color:#ff0;margin:8px 0}
+  </style>
+</head>
+<body>
+  <h1>Rock • Paper • Scissors</h1>
+  <div class="sub">Python running in your browser (via Pyodide)</div>
+
+  <div class="status" id="status">Loading Python runtime…</div>
+
+  <div class="btns">
+    <button id="b0" disabled onclick="play(0)">Rock</button>
+    <button id="b1" disabled onclick="play(1)">Paper</button>
+    <button id="b2" disabled onclick="play(2)">Scissors</button>
+  </div>
+
+  <pre id="out">Welcome! Click a button to play once Python is ready.</pre>
+
+  <!-- โหลด Pyodide จาก CDN -->
+  <script src="https://cdn.jsdelivr.net/pyodide/v0.24.1/full/pyodide.js"></script>
+  <script>
+    let pyodide;
+
+    // โค้ด Python ของเกม (ยกมาจากเวอร์ชันที่คุณเขียน)
+    const PY_CODE = `
+import random
+
+rock = '''
+    _______
+---'   ____)
+      (_____)
+      (_____)
+      (____)
+---.__(___)
+'''
+
+paper = '''
+    _______
+---'   ____)____
+          ______)
+          _______)
+         _______)
+---.__________)
+'''
+
+scissors = '''
+    _______
+---'   ____)____
+          ______)
+       __________)
+      (____)
+---.__(___)
+'''
+
+ARTS  = [rock, paper, scissors]
+NAMES = ["Rock (0)", "Paper (1)", "Scissors (2)"]
+
+def rps(user: int) -> str:
+    bot = random.randint(0, 2)
+    lines = []
+    lines.append("You chose: " + NAMES[user])
+    lines.append(ARTS[user])
+    lines.append("Computer chose: " + NAMES[bot])
+    lines.append(ARTS[bot])
+
+    if user == bot:
+        lines.append("Result: Draw")
+    elif (user - bot) % 3 == 1:
+        lines.append("Result: You win!")
+    else:
+        lines.append("Result: You lose")
+    return "\\n".join(lines)
+`;
+
+    // โหลด Pyodide แล้วเตรียมฟังก์ชัน rps()
+    async function boot() {
+      pyodide = await loadPyodide();
+      await pyodide.runPythonAsync(PY_CODE);
+      document.getElementById('status').textContent = "Python ready. Choose your move ↓";
+      ['b0','b1','b2'].forEach(id => document.getElementById(id).disabled = false);
+    }
+
+    async function play(user) {
+      const out = document.getElementById('out');
+      const result = await pyodide.runPythonAsync(`rps(${user})`);
+      out.textContent = result; // ใช้ textContent เพื่อรักษา spacing ของ ASCII art
+    }
+
+    boot();
+  </script>
+</body>
+</html>
