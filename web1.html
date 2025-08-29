@@ -1,0 +1,245 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<title>Neon RPS — Red Glow</title>
+<style>
+:root{
+  --bg1:#0b0b0f;
+  --bg2:#1a0b12;
+  --bg3:#280912;
+  --red:#ff2b41;
+  --red2:#ff5a6b;
+  --txt:#fefefe;
+  --glass:rgba(255,255,255,.06);
+  --border:rgba(255,255,255,.12);
+  --good:#38ef7d;
+  --bad:#ff4d4d;
+  --draw:#ffd166;
+}
+
+/* ==== Animated neon background ==== */
+body{
+  margin:0; min-height:100vh; color:var(--txt); font-family:ui-sans-serif,system-ui,Segoe UI,Arial,Helvetica;
+  background: radial-gradient(1200px 800px at 20% -10%, #4a0010 0%, transparent 60%),
+              radial-gradient(1200px 800px at 120% 110%, #2b001b 0%, transparent 60%),
+              linear-gradient(135deg, var(--bg1), var(--bg2) 50%, var(--bg3));
+  overflow-x:hidden;
+}
+.bg-anim::before, .bg-anim::after{
+  content:""; position:fixed; inset:-20vmax; z-index:-1;
+  background:
+    radial-gradient(2px 2px at 20% 30%, #ff7785 60%, transparent 61%),
+    radial-gradient(2px 2px at 70% 60%, #ff7785 60%, transparent 61%),
+    radial-gradient(2px 2px at 40% 80%, #ff7785 60%, transparent 61%),
+    radial-gradient(2px 2px at 85% 20%, #ff7785 60%, transparent 61%);
+  filter:blur(.2px) brightness(.8);
+  animation: drift 22s linear infinite;
+  opacity:.18;
+}
+.bg-anim::after{
+  animation-duration: 36s; opacity:.10; transform:scale(1.3);
+}
+@keyframes drift{
+  from{ transform: translate3d(0,0,0) rotate(0deg);}
+  to  { transform: translate3d(8vw,-6vh,0) rotate(360deg);}
+}
+
+/* ==== Layout ==== */
+.container{ max-width:1000px; margin:auto; padding:32px 20px 60px; }
+.header{
+  text-align:center; margin-bottom:24px;
+}
+.title{
+  font-size: clamp(32px, 6vw, 56px);
+  letter-spacing:.04em; font-weight:900;
+  color:#fff;
+  text-shadow:
+    0 0 8px var(--red), 0 0 18px var(--red),
+    0 0 36px var(--red2), 0 0 60px var(--red2);
+}
+.subtitle{
+  margin-top:6px; color:#ffb3bb; opacity:.9;
+  text-shadow:0 0 6px var(--red2);
+}
+
+/* ==== Glass card ==== */
+.card{
+  background:var(--glass);
+  border:1px solid var(--border);
+  border-radius:18px;
+  padding:18px;
+  box-shadow:
+     0 0 0 1px rgba(255,255,255,.03) inset,
+     0 10px 40px rgba(0,0,0,.45),
+     0 0 30px rgba(255,35,61,.15);
+  backdrop-filter: blur(10px);
+}
+
+/* ==== Neon buttons ==== */
+.buttons{ display:flex; gap:14px; justify-content:center; flex-wrap:wrap; margin:18px 0 10px; }
+.btn{
+  --glow: 0 0 10px var(--red), 0 0 18px var(--red2), 0 0 28px var(--red2);
+  border:2px solid var(--red); color:#fff; background:transparent; cursor:pointer;
+  padding:12px 20px; font-weight:700; letter-spacing:.03em; border-radius:12px;
+  text-shadow: var(--glow); box-shadow: inset 0 0 12px rgba(255,35,61,.35), var(--glow);
+  transition: transform .12s ease, box-shadow .2s ease, filter .2s ease;
+}
+.btn:hover{ transform:translateY(-2px) scale(1.03); filter:brightness(1.1); }
+.btn:active{ transform:translateY(0) scale(.98); }
+
+/* ==== Result stage ==== */
+.stage{
+  margin-top:16px; display:grid; gap:16px;
+  grid-template-columns: 1fr;
+}
+@media (min-width:820px){ .stage{ grid-template-columns:1fr 1fr; } }
+
+.panel{
+  background: rgba(0,0,0,.35);
+  border:1px dashed rgba(255,255,255,.12);
+  border-radius:14px;
+  padding:16px;
+  min-height:220px;
+  position:relative;
+}
+.panel h3{ margin:0 0 8px; font-weight:800; letter-spacing:.03em; color:#ff8f99; text-shadow:0 0 8px var(--red2); }
+.icon{
+  font-size: 90px; line-height:1; display:inline-block; position:relative;
+  text-shadow: 0 0 20px rgba(255,35,61,.55);
+}
+.icon.reflection{
+  display:block; transform:scaleY(-1); opacity:.35; filter:blur(.3px);
+  -webkit-mask-image: linear-gradient(to bottom, rgba(255,255,255,.8), transparent);
+  mask-image: linear-gradient(to bottom, rgba(255,255,255,.8), transparent);
+  margin-top:10px;
+}
+
+/* ==== Verdict ==== */
+.verdict{
+  margin-top:10px; text-align:center; font-size:22px; font-weight:900; letter-spacing:.03em;
+}
+.v-win{ color:var(--good); text-shadow:0 0 12px rgba(56,239,125,.8); }
+.v-lose{ color:var(--bad); text-shadow:0 0 12px rgba(255,77,77,.8); }
+.v-draw{ color:var(--draw); text-shadow:0 0 12px rgba(255,209,102,.8); }
+
+/* ==== History ==== */
+.history{ margin-top:16px; font-size:14px; opacity:.9; }
+.history b{ color:#ff9aa7; }
+
+/* ==== Confetti (pure CSS+DOM) ==== */
+.confetti{ position:fixed; inset:0; pointer-events:none; overflow:hidden; }
+.confetti i{
+  position:absolute; width:8px; height:16px; background:var(--red2);
+  top:-20px; border-radius:2px; filter:drop-shadow(0 0 6px rgba(255,35,61,.8));
+  animation:fall 900ms linear forwards;
+}
+@keyframes fall{
+  to{ transform: translateY(110vh) rotate(540deg); opacity:0; }
+}
+.footer{
+  text-align:center; margin-top:20px; color:#ffb3bb; opacity:.8; font-size:12px;
+}
+a.link{ color:#ffd6db; text-decoration:none; border-bottom:1px dashed #ffd6db66; }
+a.link:hover{ color:#fff; }
+</style>
+</head>
+<body class="bg-anim">
+  <div class="container">
+    <header class="header">
+      <div class="title">Rock • Paper • Scissors</div>
+      <div class="subtitle">Neon Red Edition — handcrafted UI (HTML/CSS/JS only)</div>
+      <div class="buttons">
+        <button class="btn" data-move="0">🪨 Rock</button>
+        <button class="btn" data-move="1">📄 Paper</button>
+        <button class="btn" data-move="2">✂️ Scissors</button>
+      </div>
+    </header>
+
+    <section class="card">
+      <div class="stage">
+        <div class="panel" id="youPanel">
+          <h3>YOU</h3>
+          <div class="icon" id="youIcon">—</div>
+          <div class="icon reflection" id="youIconRef">—</div>
+        </div>
+        <div class="panel" id="botPanel">
+          <h3>COMPUTER</h3>
+          <div class="icon" id="botIcon">—</div>
+          <div class="icon reflection" id="botIconRef">—</div>
+        </div>
+      </div>
+      <div class="verdict" id="verdict">Choose your move ↑</div>
+      <div class="history" id="history"></div>
+    </section>
+
+    <div class="footer">Tip: add this page to your Portfolio and link with a QR — no images, no AI assets, just code.</div>
+  </div>
+
+  <div class="confetti" id="fx"></div>
+
+<script>
+/* ====== Game Logic (JS) ====== */
+const names = ["Rock","Paper","Scissors"];
+const icons = ["🪨","📄","✂️"];
+
+const youIcon = document.getElementById('youIcon');
+const youIconRef = document.getElementById('youIconRef');
+const botIcon = document.getElementById('botIcon');
+const botIconRef = document.getElementById('botIconRef');
+const verdict = document.getElementById('verdict');
+const historyBox = document.getElementById('history');
+const fx = document.getElementById('fx');
+
+document.querySelectorAll('.btn').forEach(b=>{
+  b.addEventListener('click', ()=> play(parseInt(b.dataset.move,10)));
+});
+
+function play(user){
+  const bot = Math.floor(Math.random()*3);
+  setIcons(user, bot);
+  const res = result(user, bot);
+  showVerdict(res, user, bot);
+  if(res === 'win') confettiBurst();
+}
+
+function setIcons(u,b){
+  youIcon.textContent = icons[u];
+  youIconRef.textContent = icons[u];
+  botIcon.textContent = icons[b];
+  botIconRef.textContent = icons[b];
+}
+
+function result(u,b){
+  if(u===b) return 'draw';
+  return ((u - b + 3) % 3 === 1) ? 'win' : 'lose';
+}
+
+function showVerdict(r,u,b){
+  const map = {win:['You Win!','v-win'], lose:['You Lose!','v-lose'], draw:['Draw','v-draw']};
+  verdict.className = 'verdict ' + map[r][1];
+  verdict.textContent = `${map[r][0]} — ${names[u]} vs ${names[b]}`;
+  prependHistory(r,u,b);
+}
+
+function prependHistory(r,u,b){
+  const dot = r==='win'?'🟢':r==='lose'?'🔴':'🟡';
+  const line = `${dot} ${new Date().toLocaleTimeString()} — You: ${names[u]} • Bot: ${names[b]}`;
+  historyBox.innerHTML = `<div>${line}</div>` + historyBox.innerHTML;
+}
+
+/* ====== Confetti ====== */
+function confettiBurst(){
+  for(let i=0;i<30;i++){
+    const el = document.createElement('i');
+    el.style.left = (Math.random()*100)+'vw';
+    el.style.background = Math.random()>.5? 'linear-gradient(#ff2b41,#ff5a6b)' : 'linear-gradient(#ff5a6b,#ffc0c8)';
+    el.style.animationDuration = (600 + Math.random()*700)+'ms';
+    fx.appendChild(el);
+    setTimeout(()=>el.remove(), 1000);
+  }
+}
+</script>
+</body>
+</html>
