@@ -1,0 +1,340 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Rock • Paper • Scissors</title>
+  <style>
+    :root {
+      --bg: #0b0d12;
+      --card: #141925;
+      --soft: #1b2131;
+      --text: #e9eef9;
+      --muted: #9aa6bc;
+      --win: #22c55e;
+      --lose: #ef4444;
+      --draw: #7c7f8a;
+      --ring: #6ee7ff;
+    }
+    * { box-sizing: border-box; }
+    html,body { height: 100%; }
+    body {
+      margin: 0;
+      background: radial-gradient(1200px 600px at 20% 10%, #0f1422 0%, #0b0d12 60%, #080a0f 100%);
+      color: var(--text);
+      font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, "Noto Sans", "Helvetica Neue", Arial, "Apple Color Emoji", "Segoe UI Emoji";
+      display: grid;
+      place-items: center;
+    }
+    .app { width: min(740px, 92vw); }
+
+    /* Score */
+    .score {
+      display: grid;
+      grid-template-columns: 1fr auto 1fr;
+      align-items: center;
+      gap: 12px;
+      margin: 18px 0 14px;
+    }
+    .scorebox {
+      background: linear-gradient(180deg, var(--card), #0f1422);
+      border: 1px solid #1f2638;
+      border-radius: 16px;
+      padding: 10px 12px;
+      display: flex; align-items: center; justify-content: center; gap: 10px;
+      box-shadow: 0 6px 20px rgba(0,0,0,.35), inset 0 0 0 1px rgba(255,255,255,.02);
+    }
+    .scorebox .icon { font-size: 18px; opacity: .9; }
+    .scorebox .num { font-weight: 800; font-size: 20px; letter-spacing: .5px; }
+
+    .reset {
+      background: var(--soft);
+      border: 1px solid #252c41;
+      border-radius: 14px;
+      padding: 8px 10px;
+      cursor: pointer;
+      font-size: 18px;
+      color: var(--muted);
+      transition: transform .08s ease, opacity .2s ease, background .2s ease;
+    }
+    .reset:hover { opacity: .9; }
+    .reset:active { transform: scale(.98); }
+
+    /* Choices Grid */
+    .choices {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 14px;
+    }
+    .choice {
+      aspect-ratio: 1 / 1;
+      width: 100%;
+      border: 1px solid #1f2638;
+      background: linear-gradient(180deg, var(--card), #0e1320);
+      border-radius: 18px;
+      box-shadow: 0 12px 30px rgba(0,0,0,.35), inset 0 0 0 1px rgba(255,255,255,.02);
+      display: grid; place-items: center;
+      cursor: pointer;
+      transition: transform .09s ease, box-shadow .2s ease, border-color .2s ease;
+      position: relative; /* needed for click fx */
+      overflow: hidden;   /* clip click fx */
+      outline: none;
+      -webkit-tap-highlight-color: transparent;
+    }
+    .choice:focus-visible { box-shadow: 0 0 0 4px rgba(110,231,255,.15); border-color: var(--ring); }
+    .choice:hover { transform: translateY(-2px); }
+    .choice:active { transform: translateY(0) scale(.98); }
+    .choice .emoji { font-size: clamp(44px, 8vw, 72px); filter: drop-shadow(0 6px 16px rgba(0,0,0,.35)); }
+
+    /* click ripple effect */
+    .choice.fx::after {
+      content: "";
+      position: absolute; inset: 0; border-radius: inherit;
+      background: radial-gradient(200px 200px at var(--x,50%) var(--y,50%), rgba(255,255,255,.25), rgba(255,255,255,0) 60%);
+      animation: clickFx .35s ease forwards;
+      pointer-events: none;
+    }
+    @keyframes clickFx { from { opacity:.7; transform: scale(.8);} to { opacity:0; transform: scale(1.4);} }
+
+    /* Last round */
+    .last {
+      margin-top: 16px;
+      display: grid;
+      gap: 10px;
+      justify-items: center;
+    }
+    .pair { display: grid; grid-auto-flow: column; align-items: center; gap: 12px; }
+    .last-emoji { font-size: clamp(30px, 6vw, 48px); opacity: .95; }
+    .badge {
+      padding: 6px 12px;
+      border-radius: 999px;
+      font-weight: 700;
+      font-size: 12px;
+      letter-spacing: .6px;
+      text-transform: uppercase;
+      border: 1px solid #232a3f;
+      background: #121725;
+    }
+    .badge.win { color: #c9f7d8; background: linear-gradient(180deg, rgba(34,197,94,.12), rgba(34,197,94,.08)); border-color: rgba(34,197,94,.35); }
+    .badge.lose { color: #ffd3d3; background: linear-gradient(180deg, rgba(239,68,68,.12), rgba(239,68,68,.08)); border-color: rgba(239,68,68,.35); }
+    .badge.draw { color: #e4e7ec; background: linear-gradient(180deg, rgba(124,127,138,.16), rgba(124,127,138,.1)); border-color: rgba(124,127,138,.35); }
+
+    /* Overlay / cutscene */
+    .overlay {
+      position: fixed; inset: 0; display: grid; place-items: center;
+      background: radial-gradient(800px 400px at 50% 30%, rgba(12,16,28,.85), rgba(8,10,15,.88));
+      backdrop-filter: blur(6px);
+      opacity: 0; pointer-events: none; transition: opacity .2s ease;
+      z-index: 50;
+    }
+    .overlay.show { opacity: 1; pointer-events: auto; }
+    .ov-card {
+      background: linear-gradient(180deg, #111729, #0d1221);
+      border: 1px solid #1f2638;
+      border-radius: 22px;
+      padding: 20px 22px;
+      box-shadow: 0 30px 80px rgba(0,0,0,.55), inset 0 0 0 1px rgba(255,255,255,.02);
+      width: min(560px, 92vw);
+      display: grid; gap: 14px; justify-items: center;
+      animation: pop .22s cubic-bezier(.2,.8,.2,1);
+    }
+    @keyframes pop { from { transform: scale(.9); opacity:.6;} to { transform: scale(1); opacity:1;} }
+    .versus { display: grid; grid-auto-flow: column; align-items: center; gap: 14px; font-size: clamp(42px, 8vw, 72px); }
+    .vs { font-size: clamp(16px, 4vw, 22px); color: var(--muted); letter-spacing: 1px; }
+    .ov-result { font-weight: 900; letter-spacing: .6px; text-transform: uppercase; }
+    .ov-result.win { color: var(--win); }
+    .ov-result.lose { color: var(--lose); }
+    .ov-result.draw { color: var(--draw); }
+    .ov-close {
+      margin-top: 6px; background: var(--soft); color: var(--muted);
+      border: 1px solid #252c41; border-radius: 12px; padding: 8px 12px; cursor: pointer;
+    }
+
+    /* Utilities */
+    .sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0,0,0,0); white-space: nowrap; border: 0; }
+
+    @media (max-width: 460px) {
+      .score { gap: 8px; }
+      .scorebox { padding: 8px 10px; }
+      .choice { border-radius: 14px; }
+    }
+  </style>
+</head>
+<body>
+  <main class="app" aria-label="Rock Paper Scissors">
+    <h1 class="sr-only">Rock Paper Scissors</h1>
+    <header class="score">
+      <div class="scorebox" aria-label="Your score">
+        <span class="icon" aria-hidden="true">👤</span>
+        <span id="pScore" class="num">0</span>
+      </div>
+      <button class="reset" id="reset" aria-label="Reset scores" title="Reset">↺</button>
+      <div class="scorebox" aria-label="CPU score">
+        <span class="icon" aria-hidden="true">🤖</span>
+        <span id="cScore" class="num">0</span>
+      </div>
+    </header>
+
+    <section class="choices" role="group" aria-label="Pick one">
+      <button class="choice" data-choice="rock" aria-label="Rock" title="Rock"><span class="emoji">🪨</span></button>
+      <button class="choice" data-choice="paper" aria-label="Paper" title="Paper"><span class="emoji">📄</span></button>
+      <button class="choice" data-choice="scissors" aria-label="Scissors" title="Scissors"><span class="emoji">✂️</span></button>
+    </section>
+
+    <div class="last" aria-live="polite" aria-atomic="true">
+      <div class="pair">
+        <span id="pLast" class="last-emoji" aria-hidden="true">•</span>
+        <span id="cLast" class="last-emoji" aria-hidden="true">•</span>
+      </div>
+      <span id="badge" class="badge draw">Ready</span>
+    </div>
+  </main>
+
+  <!-- Cutscene overlay -->
+  <div id="overlay" class="overlay" role="dialog" aria-modal="true" aria-labelledby="ovResult">
+    <div class="ov-card">
+      <div class="versus">
+        <span id="ovP" aria-hidden="true">🪨</span>
+        <span class="vs">VS</span>
+        <span id="ovC" aria-hidden="true">📄</span>
+      </div>
+      <div id="ovResult" class="ov-result draw">Ready</div>
+      <button id="ovClose" class="ov-close" aria-label="Continue">Tap to continue</button>
+    </div>
+  </div>
+
+  <script>
+    (function(){
+      // --- Mapping & game rules ---
+      const mapEmoji = { rock:'🪨', paper:'📄', scissors:'✂️' };
+      const beats = { rock:'scissors', paper:'rock', scissors:'paper' };
+
+      // --- Elements ---
+      const choiceButtons = [...document.querySelectorAll('.choice')];
+      const pScoreEl = document.getElementById('pScore');
+      const cScoreEl = document.getElementById('cScore');
+      const pLast = document.getElementById('pLast');
+      const cLast = document.getElementById('cLast');
+      const badge = document.getElementById('badge');
+      const reset = document.getElementById('reset');
+      const overlay = document.getElementById('overlay');
+      const ovP = document.getElementById('ovP');
+      const ovC = document.getElementById('ovC');
+      const ovResult = document.getElementById('ovResult');
+      const ovClose = document.getElementById('ovClose');
+
+      // --- State ---
+      let pScore = 0, cScore = 0;
+      let overlayTimer = null; // keep to allow cancel when user taps to skip
+
+      // random cpu pick
+      function randomCPU(){
+        const keys = Object.keys(mapEmoji);
+        return keys[(Math.random() * keys.length) | 0];
+      }
+      // compute result in {win|lose|draw}
+      function result(p, c){
+        if (p === c) return 'draw';
+        return beats[p] === c ? 'win' : 'lose';
+      }
+
+      // main flow when player chooses
+      function play(p, srcBtn){
+        // add tiny ripple/press effect using CSS class with mouse position
+        if (srcBtn) {
+          const rect = srcBtn.getBoundingClientRect();
+          const x = ((event?.clientX ?? (rect.left + rect.width/2)) - rect.left) / rect.width * 100;
+          const y = ((event?.clientY ?? (rect.top + rect.height/2)) - rect.top) / rect.height * 100;
+          srcBtn.style.setProperty('--x', x + '%');
+          srcBtn.style.setProperty('--y', y + '%');
+          srcBtn.classList.add('fx');
+          // remove fx class after animation end to allow re-trigger
+          srcBtn.addEventListener('animationend', () => srcBtn.classList.remove('fx'), { once: true });
+        }
+
+        const c = randomCPU();
+        const r = result(p, c);
+
+        // update last picks UI (small area)
+        pLast.textContent = mapEmoji[p];
+        cLast.textContent = mapEmoji[c];
+
+        // update score
+        if (r === 'win') pScore++; else if (r === 'lose') cScore++;
+        pScoreEl.textContent = pScore;
+        cScoreEl.textContent = cScore;
+
+        // update small badge
+        badge.className = 'badge ' + r;
+        badge.textContent = r === 'win' ? 'Win' : r === 'lose' ? 'Lose' : 'Draw';
+
+        // animate small counters a bit for feedback
+        pulse(r);
+
+        // show cinematic overlay (cutscene)
+        showOverlay(r, p, c);
+      }
+
+      // small pulse feedback on score/badge using WAAPI (no layout thrash)
+      function pulse(type){
+        const el = type === 'win' ? pScoreEl : type === 'lose' ? cScoreEl : badge;
+        el.animate([
+          { transform:'scale(1)', offset:0 },
+          { transform:'scale(1.12)', offset:.4 },
+          { transform:'scale(1)', offset:1 }
+        ], { duration: 300, easing:'cubic-bezier(.2,.8,.2,1)' });
+      }
+
+      // overlay logic: set content, show, then auto hide after 1.2s (tap to skip)
+      function showOverlay(r, p, c){
+        // set emojis
+        ovP.textContent = mapEmoji[p];
+        ovC.textContent = mapEmoji[c];
+        // set result text + color
+        ovResult.className = 'ov-result ' + r;
+        ovResult.textContent = r === 'win' ? 'You Win' : r === 'lose' ? 'You Lose' : 'Draw';
+
+        // reveal
+        overlay.classList.add('show');
+
+        // clear any previous timer
+        if (overlayTimer) { clearTimeout(overlayTimer); overlayTimer = null; }
+        // auto-close after 1200ms
+        overlayTimer = setTimeout(hideOverlay, 1200);
+      }
+      function hideOverlay(){
+        overlay.classList.remove('show');
+        if (overlayTimer) { clearTimeout(overlayTimer); overlayTimer = null; }
+      }
+
+      // reset everything
+      function resetAll(){
+        pScore = 0; cScore = 0;
+        pScoreEl.textContent = '0';
+        cScoreEl.textContent = '0';
+        pLast.textContent = '•';
+        cLast.textContent = '•';
+        badge.className = 'badge draw';
+        badge.textContent = 'Ready';
+        hideOverlay();
+      }
+
+      // bind events
+      choiceButtons.forEach(b => b.addEventListener('click', (ev) => play(b.dataset.choice, b)));
+      reset.addEventListener('click', resetAll);
+      overlay.addEventListener('click', hideOverlay); // tap to skip
+      ovClose.addEventListener('click', hideOverlay);
+
+      // Keyboard shortcuts: R, P, S to play; X to reset; Space/Enter to close overlay
+      window.addEventListener('keydown', (e) => {
+        const k = e.key.toLowerCase();
+        if (k === 'r') play('rock');
+        else if (k === 'p') play('paper');
+        else if (k === 's') play('scissors');
+        else if (k === 'x') resetAll();
+        else if (k === ' ' || k === 'enter') hideOverlay();
+      });
+    })();
+  </script>
+</body>
+</html>
